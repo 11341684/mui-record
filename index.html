@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <meta charset="UTF-8">
+    <script src="src/js/autoWidth.js"></script>
+    <title>Title</title>
+    <style>
+        * {
+            -webkit-touch-callout:none;
+            -webkit-user-select:none;
+            -khtml-user-select:none;
+            -moz-user-select:none;
+            -ms-user-select:none;
+            user-select:none;
+        }
+        html,body{padding: 0;margin: 0;overflow: hidden;}
+        body{position: absolute;top: 0;left: 0;width: 100%;height: 100%}
+        canvas{width: 100%;height: 100%}
+    </style>
+</head>
+<body>
+<div id="canvas" style="width: 100%;height: 100%;position: fixed;bottom: 0"></div>
+<script src="src/js/mui.recorder.js"></script>
+<script>
+    document.querySelector("body").addEventListener('touchmove', function (event) {
+        event.preventDefault();
+    });
+    var option={
+        recordButton:{//录音按钮
+            //录音按钮是否显示
+            show:true,
+            //录音按钮长按后有个回弹的小动画，动画回弹力度
+            flux:5,
+            //按钮相对谁定位，当前默认x轴相对左侧定位，y轴相对bottom定位   可选选项left  center  right  top bottom
+            align:["left","bottom"],
+            //录音按钮相对坐标  "center"为左右居中
+            //当x或y为数字时会根据align参数计算，例如x:10 当align第一个参数为left时是距离左侧10，为right时距离右侧10，为center中间靠右侧10
+            //x，y可以是正负数
+            x:"center",
+            y:120,
+            //录音按钮宽高属性，以此来计算点击范围，和中心点坐标
+            width:240,
+            height:240,
+            //半径，当前圆的半径，一般为宽高的一半
+            r:120,
+            //边框属性，
+            // strokeStyle为颜色，如果需要透明可以用rgba(0,0,0,0.1)来写
+            // lineWidth，边框宽度
+            strokeStyle:"#edcea2",
+            lineWidth:5,
+            //类型圆，默认值，这个貌似不可更改
+            type:"circle",
+            //角度
+            // startRad为开始角度 默认为0
+            // endRad为结束角度   默认为0  如果是全圆的话就是startRad:0,endRad:0  半圆就是startRad:0,endRad:180(具体没有测过半圆)
+            //anticlockwise 顺时针为true，逆时针为false
+            startRad:0,
+            endRad:0,
+            anticlockwise:true,
+            //连接弧线   默认开始录音时录音按钮会和试听和取消之间有连接的弧线
+            //数组内为字符串，会匹配当前外层参数，如要追加，需要外层定义好需要追加的具体信息，然后将名字放入当前数组即可
+            lines:["cancelButton","playButton"],
+            //长按多久触发录音
+            longtapTime:500,
+            //背景颜色和默认颜色和边框颜色 带Tap为当前选中颜色 imgUrl为背景图片地址
+            backgroundColor:"#edcea2",
+            strokeStyleTap:"#e0935f",
+            backgroundColorTap:"#e0935f",
+            strokeStyleDeafult:"#edcea2",
+            backgroundColorDeafult:"#edcea2",
+            imagesUrl:["src/img/common/record.png","src/img/common/playing.png","src/img/common/stop.png"]
+        },
+        //重复的信息下面不再赘述
+        cancelButton:{  //取消按钮
+            show:false,
+            id:"cancel",
+            x:200,
+            y:335,
+            width:80,
+            height:80,
+            r:40,
+            //半径默认值，需要和r一样
+            rDefault:40,
+            strokeStyle:"#e0935f",
+            //此处的flux为小动画，也就是显示时的一段位移
+            flux:40,
+            lineWidth:2,
+            type:"circle",
+            startRad:0,
+            endRad:0,
+            anticlockwise:true,
+            align:["center","bottom"],
+            backgroundColor:"#fff",
+            //文本信息  text为文字内容 colorDeafult为默认颜色 colorTap为选中颜色
+            text:"取消",
+            font:"400 28px 黑体",
+            colorDeafult:"#e0935f",
+            colorTap:"#fff",
+            //
+            strokeStyleTap:"#e0935f",
+            backgroundColorTap:"#e0935f",
+            strokeStyleDeafult:"#e0935f",
+            backgroundColorDeafult:"#fff",
+            //这两个值需保持一致，为触发距离，当手指离这个物品在200距离范围内触发
+            limit:200,
+            rAdd:200,
+            //缩小倍数，当移动5个像素，当前圆半径增加1
+            scale:5
+        },
+        playButton:{//试听按钮
+            show:false,
+            hide:false,
+            id:"play",
+            x:-200,
+            y:335,
+            width:80,
+            height:80,
+            flux:40,
+            r:40,
+            //半径默认值，需要和r一样
+            rDefault:40,
+            strokeStyle:"#e0935f",
+            lineWidth:2,
+            type:"circle",
+            font:"400 28px 黑体",
+            startRad:0,
+            endRad:0,
+            anticlockwise:true,
+            align:["center","bottom"],
+            backgroundColor:"#fff",
+            strokeStyleTap:"#e0935f",
+            backgroundColorTap:"#e0935f",
+            strokeStyleDeafult:"#e0935f",
+            backgroundColorDeafult:"#fff",
+            limit:200,
+            rAdd:200,
+            scale:5,
+            text:"试听",
+            colorDeafult:"#e0935f",
+            colorTap:"#fff"
+        },
+        tipText:{//中间的提示文本
+            show:true,
+            x:"center",
+            y:440,
+            width:0,
+            height:0,
+            textBaseline:"middle",//文字上下居中
+            textAlign:"center",//文字左右居中
+            font:"400 28px 黑体",
+            align:["center","bottom"],
+            text:"长按开始录音",
+            color:"#666"
+        },
+        duration:{//当前录音时长
+            show:true,
+            startTime:null,//开始录音时间，默认为null，不可修改
+            x:"center",
+            y:-300,
+            width:0,
+            height:0,
+            textBaseline:"middle",
+            textAlign:"center",
+            font:"400 120px 黑体",
+            align:["center","center"],
+            text:"00:00",
+            color:"#666",
+            //每一次重绘，都会触发这个函数，主要用来处理显示的逻辑
+            /* render:function () {
+             if(this.startTime){//如果有开始时间，就把当前文本转换为已经录音的时长
+             this.text=timeToStr(new Date().getTime()-this.startTime);
+             }
+             }*/
+        },
+        temperament:{//音频模拟频率动画
+            show:true,
+            /**           只需要设置总宽度，和方块个数 和间隙，会自动计算每一个的宽度                 **/
+            //每一个小矩形中间的间隔
+            interval:6,
+            //总方块数
+            total:60,
+            x:"center",
+            y:-100,
+            align:["center","center"],
+            //所有方块的总宽度
+            width:500,
+            //每个方框的最大高度
+            height:60,
+            //动画最大波动范围   30的话就是30-60高度之间波动，20的话就是40-60之间波动
+            flux:30,
+            backgroundColor:"#e0935f",
+            strokeStyleTap:"#e0935f",
+            backgroundColorTap:"#e0935f",
+            strokeStyleDeafult:"#e0935f",
+            backgroundColorDeafult:"#e0935f"
+        },
+        viewApi:{//回调函数
+            start:function () {
+                console.log("开始")
+            },//录音开始时触发
+            end:function (entry) {
+                console.log("结束"+(entry&&entry.name||""));
+            },//录音完成时触发
+            cancel:function () {
+                console.log("q取消")
+            },//录音取消时触发
+            listen:function () {
+                console.log("试听")
+            },//录音试听时触发
+            error:function (err) {
+                console.log(err+"错误");
+            }//发生错误时触发
+        }
+    };
+    //调用方法
+    //第一个参数为calss或者id ，第二个为配置
+    var a=record("#canvas",option);
+</script>
+</body>
+</html>
